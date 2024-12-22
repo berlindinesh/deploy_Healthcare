@@ -57,40 +57,34 @@ exports.registerUser = async (req, res) => {
 // Verify OTP
 
 exports.verifyOtp = async (req, res) => {
-    const { email, otp } = req.body;
-
-    console.log(`OTP: ${user.otp}`);
-
-    if (!email || !otp) {
-        return res.status(400).json({ message: "Email and OTP are required" });
-    }
-
     try {
+        const { email, otp } = req.body;
+
+        // Validate request data
+        if (!email || !otp) {
+            return res.status(400).json({ message: 'Email and OTP are required' });
+        }
+
+        // Fetch the user from the database
         const user = await User.findOne({ email });
+
         if (!user) {
-            return res.status(400).json({ message: "User not found" });
+            return res.status(404).json({ message: 'User not found' });
         }
 
-        if (user.otp === otp) {
-            user.isVerified = true;
-            user.otp = null;
-
-            const token = jwt.sign(
-                { email: user.email, isVerified: true, userId: user._id },
-                process.env.JWT_SECRET,
-                { expiresIn: '1h' }
-            );
-
-            user.token = token;
-            await user.save();
-
-            return res.status(200).json({ message: "OTP verified successfully", token });
-        } else {
-            return res.status(400).json({ message: "Invalid OTP" });
+        // Check if the OTP matches
+        if (user.otp !== otp) {
+            return res.status(400).json({ message: 'Invalid OTP' });
         }
+
+        console.log(`OTP: ${user.otp}`); // Log the OTP for debugging purposes
+
+        // Send a success response
+        res.status(200).json({ message: 'OTP verified successfully' });
+
     } catch (error) {
-        console.error("Error in OTP verification:", error.message);
-        res.status(500).json({ message: "Failed to verify OTP", error: error.message });
+        console.error('Error in verifyOtp:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
     }
 };
 
